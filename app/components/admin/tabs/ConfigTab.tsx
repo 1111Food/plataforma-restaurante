@@ -351,7 +351,8 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
                                     { id: 'classic-grid', label: 'Clásico (Grid)', desc: 'Equilibrado y estándar.' },
                                     { id: 'urban-grid', label: 'Urbano / Street', desc: 'Cuadrícula compacta tipo app.' },
                                     { id: 'minimal-list', label: 'Minimalista (Fresh)', desc: 'Lista limpia horizontal.' },
-                                    { id: 'luxury-showcase', label: 'Luxury (Showcase)', desc: 'Fotos gigantes y elegancia.' }
+                                    { id: 'luxury-showcase', label: 'Luxury (Showcase)', desc: 'Fotos gigantes y elegancia.' },
+                                    { id: 'premium-luxe', label: 'Premium Luxe', desc: 'Exclusivo. Full screen y gradientes.' }
                                 ].map((template) => (
                                     <button
                                         key={template.id}

@@ -8,10 +8,168 @@ import { ShoppingCart, Info, Calendar } from 'lucide-react';
 import ClassicGrid from './templates/ClassicGrid';
 import LuxuryShowcase from './templates/LuxuryShowcase';
 import MinimalList from './templates/MinimalList';
-import UrbanGrid from './templates/UrbanGrid';
-import Lightbox from './ui/Lightbox';
+import MenuThemeLuxe from './templates/MenuThemeLuxe';
 
-// Tipos de datos
+// ... (imports remain)
+
+type Restaurant = {
+    // ... other fields
+    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid' | 'premium-luxe';
+    // ...
+};
+
+// ... inside MenuClient ...
+
+const renderTemplate = (catItems: MenuItem[]) => {
+    const style = restaurant.template_style || 'classic-grid';
+
+    // Props updated with Lightbox Handler
+    const props = {
+        items: catItems,
+        restaurant,
+        addToCart: handleAddToCart,
+        removeOne,
+        cartItems: items,
+        addedId,
+        onOpenLightbox: openItemLightbox
+    };
+
+    switch (style) {
+        case 'premium-luxe':
+            return <MenuThemeLuxe {...props} />;
+        case 'luxury-showcase':
+            return <LuxuryShowcase {...props} />;
+        case 'minimal-list':
+            return <MinimalList {...props} />;
+        case 'urban-grid':
+            return <UrbanGrid {...props} />;
+        case 'classic-grid':
+        default:
+            return <ClassicGrid {...props} />;
+    }
+};
+
+// ... (Rest of component)
+
+function BannerCarousel({ banners, primaryColor, onOpenLightbox }: { banners: string[], primaryColor: string, onOpenLightbox: () => void }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const resetTimeout = () => {
+        if (timeoutRef.current) clearInterval(timeoutRef.current);
+    }
+
+    useEffect(() => {
+        resetTimeout();
+        timeoutRef.current = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % banners.length);
+        }, 5000);
+
+        return () => resetTimeout();
+    }, [banners.length, currentIndex]);
+
+    const nextSlide = () => {
+        setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }
+
+    const prevSlide = () => {
+        setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+    }
+
+    // Touch Handlers
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+        resetTimeout();
+    }
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    }
+
+    const onTouchEnd = (e: React.TouchEvent) => {
+        if (!touchStart || !touchEnd) {
+            if (touchStart && !touchEnd) {
+                onOpenLightbox();
+            }
+            return;
+        }
+
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe) {
+            nextSlide();
+        } else if (isRightSwipe) {
+            prevSlide();
+        } else {
+            if (Math.abs(distance) < 10) {
+                onOpenLightbox();
+            }
+        }
+    }
+
+    return (
+        <div
+            className="w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 relative group bg-[#0D0D0D] cursor-pointer touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onClick={onOpenLightbox}
+        >
+            <div
+                className="relative w-full h-48 md:h-64 transition-all duration-500 ease-in-out"
+            >
+                {banners.map((banner, index) => (
+                    <div
+                        key={index}
+                        className={`absolute inset-0 transition-opacity duration-1000 ${index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                            }`}
+                    >
+                        <img
+                            src={banner}
+                            className="hero-image"
+                            alt={`Promo ${index + 1}`}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Indicators */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                {banners.map((_, index) => (
+                    <button
+                        key={index}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentIndex(index);
+                        }}
+                        className={`w-2 h-2 rounded-full transition-all ${index === currentIndex
+                            ? 'w-6 bg-[var(--primary-color)]'
+                            : 'bg-white/50 hover:bg-white'
+                            }`}
+                        style={{ backgroundColor: index === currentIndex ? primaryColor : undefined }}
+                    />
+                ))}
+            </div>
+
+            <div className="absolute bottom-4 left-4 z-20">
+                <span className="bg-[var(--primary-color)] text-black text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider" style={{ backgroundColor: primaryColor }}>Destacado</span>
+            </div>
+
+            {/* View Icon Hint */}
+            <div className="absolute top-4 right-4 z-20 opacity-0 md:group-hover:opacity-100 transition-opacity bg-black/50 p-2 rounded-full backdrop-blur-sm">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            </div>
+        </div>
+    )
+}
 type MenuItem = {
     id: string;
     name: string;
@@ -41,7 +199,7 @@ type Restaurant = {
     promo_banner_url_2?: string | null;
     promo_banner_url_3?: string | null;
     card_color?: string | null;
-    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid';
+    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid' | 'premium-luxe';
     background_color?: string;
     primary_color?: string;
     text_color?: string;
@@ -66,15 +224,26 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
         }
     }, [setTableNumber]);
 
-    // LIGHTBOX STATE
-    const [lightboxItem, setLightboxItem] = useState<MenuItem | null>(null);
+    // LIGHTBOX STATE (Generalized)
+    const [lightboxImages, setLightboxImages] = useState<string[]>([]);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-    const openLightbox = (item: MenuItem) => {
+    // Helper for Menu Items
+    const openItemLightbox = (item: MenuItem) => {
         if (!item.image_url) return;
-        setLightboxItem(item);
+        setLightboxImages([
+            item.image_url,
+            item.detail_image_url,
+            item.third_image_url
+        ].filter(Boolean) as string[]);
         setIsLightboxOpen(true);
     };
+
+    // Helper for Banners
+    const openBannerLightbox = (allBanners: string[]) => {
+        setLightboxImages(allBanners);
+        setIsLightboxOpen(true);
+    }
 
     const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
         if (!serverRestaurant?.categories) return [];
@@ -177,10 +346,12 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
             removeOne,
             cartItems: items,
             addedId,
-            onOpenLightbox: openLightbox // NEW PROP
+            onOpenLightbox: openItemLightbox // Updated PROP
         };
 
         switch (style) {
+            case 'premium-luxe':
+                return <MenuThemeLuxe {...props} />;
             case 'luxury-showcase':
                 return <LuxuryShowcase {...props} />;
             case 'minimal-list':
@@ -199,6 +370,13 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
     const logoHeight = restaurant.logo_height || 80;
     const logoAlign = restaurant.logo_alignment || 'left';
     const hasEvents = restaurant.restaurant_events && restaurant.restaurant_events.length > 0;
+
+    // BANNER LOGIC PREPARATION
+    const availableBanners = [
+        restaurant.promo_banner_url,
+        restaurant.promo_banner_url_2,
+        restaurant.promo_banner_url_3
+    ].filter(Boolean) as string[];
 
     return (
         <div
@@ -284,20 +462,18 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
 
                 {/* CAROUSEL / BANNERS */}
                 {(() => {
-                    const banners = [
-                        restaurant.promo_banner_url,
-                        restaurant.promo_banner_url_2,
-                        restaurant.promo_banner_url_3
-                    ].filter(Boolean) as string[];
-
+                    const banners = availableBanners;
                     if (banners.length === 0) return null;
 
                     if (banners.length === 1) {
                         return (
-                            <div className="w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 relative group transform hover:scale-[1.01] transition-transform duration-500">
+                            <div
+                                className="w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 relative group transform hover:scale-[1.01] transition-transform duration-500 cursor-pointer"
+                                onClick={() => openBannerLightbox(banners)}
+                            >
                                 <img
                                     src={banners[0]}
-                                    className="w-full h-auto object-cover max-h-64"
+                                    className="hero-image max-h-64"
                                     alt="Promoción Especial"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -309,7 +485,11 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
                     }
 
                     // Carousel Logic for multiple banners
-                    return <BannerCarousel banners={banners} primaryColor={restaurant.primary_color || '#FFB800'} />
+                    return <BannerCarousel
+                        banners={banners}
+                        primaryColor={restaurant.primary_color || '#FFB800'}
+                        onOpenLightbox={() => openBannerLightbox(banners)}
+                    />
                 })()}
 
                 {categories.map((cat) => (
@@ -368,13 +548,9 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
 
             {/* IMMERSIVE LIGHTBOX */}
             <Lightbox
-                isOpen={isLightboxOpen && !!lightboxItem}
+                isOpen={isLightboxOpen && lightboxImages.length > 0}
                 onClose={() => setIsLightboxOpen(false)}
-                images={[
-                    lightboxItem?.image_url,
-                    lightboxItem?.detail_image_url,
-                    lightboxItem?.third_image_url
-                ].filter(Boolean) as string[]}
+                images={lightboxImages}
             />
 
             {/* MODIFIER SELECTOR MODAL */}
@@ -393,7 +569,7 @@ export default function MenuClient({ restaurant: serverRestaurant }: { restauran
     );
 }
 
-function BannerCarousel({ banners, primaryColor }: { banners: string[], primaryColor: string }) {
+function BannerCarousel({ banners, primaryColor, onOpenLightbox }: { banners: string[], primaryColor: string, onOpenLightbox: () => void }) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
@@ -404,7 +580,10 @@ function BannerCarousel({ banners, primaryColor }: { banners: string[], primaryC
     }, [banners.length]);
 
     return (
-        <div className="w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 relative group bg-[#0D0D0D]">
+        <div
+            onClick={onOpenLightbox}
+            className="w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 relative group bg-[#0D0D0D] cursor-pointer"
+        >
             <div
                 className="relative w-full h-48 md:h-64 transition-all duration-500 ease-in-out"
             >
@@ -416,7 +595,7 @@ function BannerCarousel({ banners, primaryColor }: { banners: string[], primaryC
                     >
                         <img
                             src={banner}
-                            className="w-full h-full object-cover"
+                            className="hero-image"
                             alt={`Promo ${index + 1}`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -429,7 +608,7 @@ function BannerCarousel({ banners, primaryColor }: { banners: string[], primaryC
                 {banners.map((_, index) => (
                     <button
                         key={index}
-                        onClick={() => setCurrentIndex(index)}
+                        onClick={(e) => { e.stopPropagation(); setCurrentIndex(index); }}
                         className={`w-2 h-2 rounded-full transition-all ${index === currentIndex
                             ? 'w-6 bg-[var(--primary-color)]'
                             : 'bg-white/50 hover:bg-white'
@@ -441,6 +620,11 @@ function BannerCarousel({ banners, primaryColor }: { banners: string[], primaryC
 
             <div className="absolute bottom-4 left-4 z-20">
                 <span className="bg-[var(--primary-color)] text-black text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider" style={{ backgroundColor: primaryColor }}>Destacado</span>
+            </div>
+
+            {/* View Icon Hint */}
+            <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 p-2 rounded-full backdrop-blur-sm">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
             </div>
         </div>
     )

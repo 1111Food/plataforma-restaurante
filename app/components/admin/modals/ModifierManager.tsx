@@ -12,7 +12,7 @@ const supabase = createClient(
 
 type ModifierOption = {
     id: string
-    group_id: string
+    modifier_group_id: string
     name: string
     price_adjustment: number
     is_available: boolean
@@ -108,7 +108,7 @@ export default function ModifierManager({ isOpen, onClose, restaurantId, groups,
         const { error } = await supabase
             .from('modifier_options')
             .insert([{
-                group_id: selectedGroup.id,
+                modifier_group_id: selectedGroup.id,
                 name: newOptionName,
                 price_adjustment: price
             }])

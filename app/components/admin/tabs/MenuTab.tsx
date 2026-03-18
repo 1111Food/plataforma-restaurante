@@ -24,7 +24,7 @@ type MenuTabProps = {
 
 type ModifierOption = {
     id: string
-    group_id: string
+    modifier_group_id: string
     name: string
     price_adjustment: number
     is_available: boolean

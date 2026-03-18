@@ -7,24 +7,25 @@ interface LightboxProps {
     isOpen: boolean;
     onClose: () => void;
     images: string[]; // URLs of images to show
+    initialIndex?: number;
 }
 
-export default function Lightbox({ isOpen, onClose, images }: LightboxProps) {
-    const [activeIndex, setActiveIndex] = useState(0);
+export default function Lightbox({ isOpen, onClose, images, initialIndex = 0 }: LightboxProps) {
+    const [activeIndex, setActiveIndex] = useState(initialIndex);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     // Reset index when opening
     useEffect(() => {
         if (isOpen) {
-            setActiveIndex(0);
+            setActiveIndex(initialIndex);
             document.body.style.overflow = 'hidden'; // Prevent scrolling
         } else {
             document.body.style.overflow = 'unset';
             setActiveIndex(0); // Reset for next time
         }
         return () => { document.body.style.overflow = 'unset'; }
-    }, [isOpen]);
+    }, [isOpen, initialIndex]);
 
     // Keyboard navigation
     useEffect(() => {
@@ -72,7 +73,7 @@ export default function Lightbox({ isOpen, onClose, images }: LightboxProps) {
 
     return (
         <div
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fade-in touch-none p-4"
+            className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fade-in touch-none p-4"
             onClick={onClose} // Backdrop closes
         >
 

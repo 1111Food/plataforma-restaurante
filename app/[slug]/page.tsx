@@ -28,7 +28,16 @@ type Restaurant = {
     slug: string
     name: string
     logo_url?: string
-    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid' // New
+    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid'
+    restaurant_gallery?: {
+        active: boolean;
+        albums: {
+            id: string;
+            name: string;
+            media: string[];
+            video?: string | null;
+        }[];
+    }
     categories: Category[]
 }
 
@@ -100,6 +109,7 @@ export default async function MenuPage({
     }
 
     const restaurant = restaurantData as unknown as Restaurant
+    console.log('DEBUG: restaurant_gallery', JSON.stringify(restaurant.restaurant_gallery, null, 2))
 
     return (
         <CartProvider>

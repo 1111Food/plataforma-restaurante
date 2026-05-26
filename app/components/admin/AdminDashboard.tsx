@@ -1,20 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useState, useTransition } from 'react'
 import OverviewTab from './tabs/OverviewTab'
 import MenuTab from './tabs/MenuTab'
 import EventsTab from './tabs/EventsTab'
 import ConfigTab from './tabs/ConfigTab'
 import QRTab from './tabs/QRTab'
-import { LayoutDashboard, Calendar, Settings, ExternalLink, Lock, UserPlus, QrCode, ChefHat, PieChart } from 'lucide-react'
+import { LayoutDashboard, Calendar, Settings, ExternalLink, QrCode, ChefHat, PieChart, LogOut } from 'lucide-react'
 import Link from 'next/link'
-
-// Initialize Supabase Client
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { logoutAdmin } from '../../actions/auth'
 
 type Props = {
     restaurant: any
@@ -22,118 +16,15 @@ type Props = {
 
 export default function AdminDashboard({ restaurant }: Props) {
     const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'events' | 'config' | 'qr'>('overview')
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [password, setPassword] = useState('')
-    const [isRegistering, setIsRegistering] = useState(false) // Toggle Login vs Register
-    const [isLoading, setIsLoading] = useState(false)
+    const [isPending, startTransition] = useTransition()
 
-    // Login Handler
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (restaurant.admin_password && password === restaurant.admin_password) {
-            setIsAuthenticated(true)
-        } else {
-            alert('Contraseña incorrecta')
+    const handleLogout = () => {
+        if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+            startTransition(async () => {
+                await logoutAdmin(restaurant.slug)
+                window.location.reload()
+            })
         }
-    }
-
-    // Register / Claim Handler
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!password) {
-            alert('Por favor ingresa una contraseña')
-            return
-        }
-
-        setIsLoading(true)
-
-        try {
-            // Update the restaurant record with the new password
-            const { error } = await supabase
-                .from('restaurants')
-                .update({ admin_password: password })
-                .eq('id', restaurant.id)
-
-            if (error) throw error
-
-            alert('¡Restaurante reclamado con éxito! Ahora eres el administrador.')
-            // Update local state to reflect the new password (so login works implicitly)
-            restaurant.admin_password = password
-            setIsAuthenticated(true)
-
-        } catch (error: any) {
-            console.error('Registration error:', error)
-            alert('Error al registrar: ' + error.message)
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white p-6">
-                <div className="w-full max-w-sm">
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold tracking-widest mb-2">
-                            {isRegistering ? 'CONFIGURAR ACCESO' : '11:11 STUDIO ADMIN'}
-                        </h1>
-                        <p className="text-neutral-500 text-sm">
-                            {isRegistering
-                                ? `Reclamando propiedad de: ${restaurant.name}`
-                                : `Administrando: ${restaurant.name}`}
-                        </p>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={isRegistering ? handleRegister : handleLogin} className="flex flex-col gap-4">
-                        <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={20} />
-                            <input
-                                type="password"
-                                placeholder={isRegistering ? "Crea tu Contraseña Maestra" : "Contraseña de acceso"}
-                                className="w-full bg-neutral-900 border border-neutral-800 p-4 pl-12 rounded-xl focus:border-amber-500 outline-none transition text-white placeholder-neutral-600"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-
-                        <button
-                            disabled={isLoading}
-                            className={`
-                                font-bold py-4 rounded-xl transition flex items-center justify-center gap-2
-                                ${isRegistering
-                                    ? 'bg-amber-500 text-black hover:bg-amber-400'
-                                    : 'bg-white text-black hover:bg-neutral-200'}
-                            `}
-                        >
-                            {isLoading ? 'Procesando...' : (isRegistering ? 'Reclamar & Entrar' : 'Entrar')}
-                        </button>
-                    </form>
-
-                    {/* Toggle Mode */}
-                    <div className="mt-8 text-center space-y-4">
-                        <button
-                            onClick={() => {
-                                setIsRegistering(!isRegistering)
-                                setPassword('')
-                            }}
-                            className="text-sm text-neutral-400 hover:text-white transition underline decoration-neutral-800 underline-offset-4"
-                        >
-                            {isRegistering
-                                ? "¿Ya tienes cuenta? Iniciar Sesión"
-                                : "¿Nuevo Restaurante? Regístrate aquí"}
-                        </button>
-
-                        <div className="block">
-                            <Link href={`/${restaurant.slug}`} className="text-xs text-neutral-600 hover:text-neutral-400 transition">
-                                ← Volver al menú público
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -195,11 +86,19 @@ export default function AdminDashboard({ restaurant }: Props) {
                     </Link>
                 </nav>
 
-                <div className="p-4 border-t border-white/5">
-                    <Link href={`/${restaurant.slug}`} target="_blank" className="flex items-center gap-3 text-neutral-500 hover:text-white transition p-2">
+                <div className="p-4 border-t border-white/5 flex flex-col gap-2">
+                    <Link href={`/${restaurant.slug}`} target="_blank" className="flex items-center gap-3 text-neutral-500 hover:text-white transition p-2 flex-shrink-0">
                         <ExternalLink size={20} />
                         <span className="hidden lg:block">Ver Menú Público</span>
                     </Link>
+                    <button
+                        onClick={handleLogout}
+                        disabled={isPending}
+                        className="flex items-center gap-3 text-red-500 hover:text-red-400 hover:bg-red-500/5 transition p-2 rounded-xl cursor-pointer w-full text-left font-medium flex-shrink-0"
+                    >
+                        <LogOut size={20} className={isPending ? 'animate-pulse' : ''} />
+                        <span className="hidden lg:block">{isPending ? 'Saliendo...' : 'Cerrar Sesión'}</span>
+                    </button>
                 </div>
             </aside>
 

@@ -30,25 +30,25 @@ const PREVIEW_ITEM = {
 
 export default function ConfigTab({ restaurant }: { restaurant: any }) {
     const [settings, setSettings] = useState({
-        primary_color: restaurant.primary_color || '#FFB800',
-        background_color: restaurant.background_color || '#0D0D0D',
-        text_color: restaurant.text_color || '#F5F5F5',
+        primary_color: restaurant.theme_config?.primaryColor || restaurant.primary_color || '#FFB800',
+        background_color: restaurant.theme_config?.backgroundColor || restaurant.background_color || '#0D0D0D',
+        text_color: restaurant.theme_config?.textColor || restaurant.text_color || '#F5F5F5',
         logo_url: restaurant.logo_url || null,
-        logo_height: restaurant.logo_height || 80, // Default 80px
-        logo_alignment: restaurant.logo_alignment || 'left', // 'left', 'center', 'right'
-        promo_banner_url: restaurant.promo_banner_url || null,
-        promo_banner_url_2: restaurant.promo_banner_url_2 || null, // New
-        promo_banner_url_3: restaurant.promo_banner_url_3 || null,
-        card_color: restaurant.card_color || null,
-        template_style: restaurant.template_style || 'classic-grid',
+        logo_height: restaurant.theme_config?.logoHeight || restaurant.logo_height || 80, // Default 80px
+        logo_alignment: restaurant.theme_config?.logoAlignment || restaurant.logo_alignment || 'left', // 'left', 'center', 'right'
+        promo_banner_url: restaurant.theme_config?.promoBannerUrl || restaurant.promo_banner_url || null,
+        promo_banner_url_2: restaurant.theme_config?.promoBannerUrl2 || restaurant.promo_banner_url_2 || null, // New
+        promo_banner_url_3: restaurant.theme_config?.promoBannerUrl3 || restaurant.promo_banner_url_3 || null,
+        card_color: restaurant.theme_config?.cardColor || restaurant.card_color || null,
+        template_style: restaurant.theme_config?.templateId || restaurant.template_style || 'classic-grid',
         delivery_zones: restaurant.delivery_zones || [],
         phone: restaurant.phone || '',
 
         // Dynamic Theme Config
         theme_config: restaurant.theme_config || {
-            templateId: restaurant.template_style || 'classic-grid',
-            primaryColor: restaurant.primary_color || '#FFB800',
-            imageSize: 'medium', // 'small', 'medium', 'large'
+            templateId: restaurant.theme_config?.templateId || restaurant.template_style || 'classic-grid',
+            primaryColor: restaurant.theme_config?.primaryColor || restaurant.primary_color || '#FFB800',
+            imageSize: restaurant.theme_config?.imageSize || 'medium', // 'small', 'medium', 'large'
             fontFamily: restaurant.theme_config?.fontFamily || 'inter'
         },
         schedule_config: restaurant.schedule_config || {
@@ -124,34 +124,88 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
             let bannerUrl2 = settings.promo_banner_url_2
             let bannerUrl3 = settings.promo_banner_url_3
 
-            // ... (logo upload logic)
-            // ... (banner upload logic)
-            // ... (bannerUrl assignments)
+            // 1. Upload Logo if selected
+            if (logoFile) {
+                const fileExt = logoFile.name.split('.').pop();
+                const fileName = `${restaurant.id}/logo_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('restaurant-assets')
+                    .upload(fileName, logoFile);
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('restaurant-assets')
+                    .getPublicUrl(fileName);
+                logoUrl = publicUrl;
+            }
+
+            // 2. Upload Banners if selected
+            if (bannerFiles.banner1) {
+                const fileExt = bannerFiles.banner1.name.split('.').pop();
+                const fileName = `${restaurant.id}/banner1_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('restaurant-assets')
+                    .upload(fileName, bannerFiles.banner1);
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('restaurant-assets')
+                    .getPublicUrl(fileName);
+                bannerUrl1 = publicUrl;
+            }
+
+            if (bannerFiles.banner2) {
+                const fileExt = bannerFiles.banner2.name.split('.').pop();
+                const fileName = `${restaurant.id}/banner2_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('restaurant-assets')
+                    .upload(fileName, bannerFiles.banner2);
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('restaurant-assets')
+                    .getPublicUrl(fileName);
+                bannerUrl2 = publicUrl;
+            }
+
+            if (bannerFiles.banner3) {
+                const fileExt = bannerFiles.banner3.name.split('.').pop();
+                const fileName = `${restaurant.id}/banner3_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('restaurant-assets')
+                    .upload(fileName, bannerFiles.banner3);
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('restaurant-assets')
+                    .getPublicUrl(fileName);
+                bannerUrl3 = publicUrl;
+            }
 
             // Construct new theme_config
             const newThemeConfig = {
                 ...settings.theme_config,
                 templateId: settings.template_style,
                 primaryColor: settings.primary_color,
-                // imageSize is updated directly in settings.theme_config via UI
+                backgroundColor: settings.background_color,
+                textColor: settings.text_color,
+                logoHeight: settings.logo_height,
+                logoAlignment: settings.logo_alignment,
+                promoBannerUrl: bannerUrl1,
+                promoBannerUrl2: bannerUrl2,
+                promoBannerUrl3: bannerUrl3,
+                cardColor: settings.card_color,
+                imageSize: settings.theme_config?.imageSize || 'medium',
+                fontFamily: settings.theme_config?.fontFamily || 'inter'
             };
 
             const updateData = {
-                primary_color: settings.primary_color,
-                background_color: settings.background_color,
-                text_color: settings.text_color,
                 logo_url: logoUrl,
-                logo_height: settings.logo_height,
-                logo_alignment: settings.logo_alignment,
-                promo_banner_url: bannerUrl1,
-                promo_banner_url_2: bannerUrl2,
-                promo_banner_url_3: bannerUrl3,
-                card_color: settings.card_color,
-                template_style: settings.template_style,
                 delivery_zones: settings.delivery_zones,
                 phone: settings.phone || null,
                 theme_config: newThemeConfig,
-                restaurant_gallery: settings.restaurant_gallery
+                restaurant_gallery: settings.restaurant_gallery,
+                schedule_config: settings.schedule_config
             }
 
             const result = await updateRestaurantSettings(restaurant.id, restaurant.slug, updateData)
@@ -167,7 +221,6 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
                 promo_banner_url_3: bannerUrl3,
                 theme_config: newThemeConfig
             }))
-            // ... clean up
 
             setLogoFile(null)
             setBannerFiles({ banner1: null, banner2: null, banner3: null })
@@ -183,15 +236,24 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
     const deleteBanner = async (slot: number) => {
         if (!confirm("¿Estás seguro de eliminar este banner?")) return;
 
-        // Determine which field to clear
+        const bannerKey = slot === 1 ? 'promoBannerUrl' : `promoBannerUrl${slot}`;
+        const newThemeConfig = {
+            ...settings.theme_config,
+            [bannerKey]: null
+        };
+
         const key = slot === 1 ? 'promo_banner_url' : `promo_banner_url_${slot}` as any;
 
         // Optimistic update
-        setSettings(prev => ({ ...prev, [key]: null }));
+        setSettings(prev => ({ 
+            ...prev, 
+            [key]: null,
+            theme_config: newThemeConfig
+        }));
         setBannerFiles(prev => ({ ...prev, [`banner${slot}`]: null }));
 
         try {
-            await updateRestaurantSettings(restaurant.id, restaurant.slug, { [key]: null })
+            await updateRestaurantSettings(restaurant.id, restaurant.slug, { theme_config: newThemeConfig })
         } catch (e) {
             console.error(e)
         }

@@ -204,7 +204,7 @@ export default function MenuClient({ restaurant: serverRestaurant }: MenuClientP
     const [restaurant] = useState<Restaurant>(serverRestaurant);
 
     // Dynamic Template State
-    const [activeTemplate, setActiveTemplate] = useState<string>(restaurant.template_style || 'classic-grid');
+    const [activeTemplate, setActiveTemplate] = useState<string>(restaurant.theme_config?.templateId || restaurant.template_style || 'classic-grid');
 
     // ... existing useState ...
     const [addedId, setAddedId] = useState<string | null>(null);
@@ -345,9 +345,9 @@ export default function MenuClient({ restaurant: serverRestaurant }: MenuClientP
     // CSS VARIABLES
     useEffect(() => {
         if (restaurant) {
-            document.documentElement.style.setProperty('--bg-color', restaurant.background_color || '#0D0D0D');
-            document.documentElement.style.setProperty('--primary-color', restaurant.primary_color || '#FFB800');
-            document.documentElement.style.setProperty('--text-color', restaurant.text_color || restaurant.font_color || '#F5F5F5');
+            document.documentElement.style.setProperty('--bg-color', restaurant.theme_config?.backgroundColor || restaurant.background_color || '#0D0D0D');
+            document.documentElement.style.setProperty('--primary-color', restaurant.theme_config?.primaryColor || restaurant.primary_color || '#FFB800');
+            document.documentElement.style.setProperty('--text-color', restaurant.theme_config?.textColor || restaurant.text_color || restaurant.font_color || '#F5F5F5');
 
             if (restaurant.categories?.[0]) {
                 setActiveCategory(restaurant.categories[0].name);
@@ -514,13 +514,13 @@ export default function MenuClient({ restaurant: serverRestaurant }: MenuClientP
 
     if (!restaurant) return <div className="min-h-screen flex items-center justify-center bg-black text-white">Cargando experiencia...</div>;
 
-    const logoHeight = restaurant.logo_height || 80;
-    const logoAlign = restaurant.logo_alignment || 'left';
+    const logoHeight = restaurant.theme_config?.logoHeight || restaurant.logo_height || 80;
+    const logoAlign = restaurant.theme_config?.logoAlignment || restaurant.logo_alignment || 'left';
     const hasEvents = restaurant.restaurant_events && restaurant.restaurant_events.length > 0;
     const availableBanners = [
-        restaurant.promo_banner_url,
-        restaurant.promo_banner_url_2,
-        restaurant.promo_banner_url_3
+        restaurant.theme_config?.promoBannerUrl || restaurant.promo_banner_url,
+        restaurant.theme_config?.promoBannerUrl2 || restaurant.promo_banner_url_2,
+        restaurant.theme_config?.promoBannerUrl3 || restaurant.promo_banner_url_3
     ].filter(Boolean) as string[];
 
     return (

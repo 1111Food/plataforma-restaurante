@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Upload, Palette, Image as ImageIcon, Save, RefreshCw, Layout, AlignLeft, AlignCenter, AlignRight, Trash2, MapPin, Maximize2, Calendar, Check, Video, Plus, X } from 'lucide-react'
+import { Upload, Palette, Image as ImageIcon, Save, RefreshCw, Layout, AlignLeft, AlignCenter, AlignRight, Trash2, MapPin, Maximize2, Calendar, Check, Video, Plus, X, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 
 const supabase = createClient(
@@ -42,6 +42,7 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
         card_color: restaurant.card_color || null,
         template_style: restaurant.template_style || 'classic-grid',
         delivery_zones: restaurant.delivery_zones || [],
+        phone: restaurant.phone || '',
 
         // Dynamic Theme Config
         theme_config: restaurant.theme_config || {
@@ -148,6 +149,7 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
                 card_color: settings.card_color,
                 template_style: settings.template_style,
                 delivery_zones: settings.delivery_zones,
+                phone: settings.phone || null,
                 theme_config: newThemeConfig,
                 restaurant_gallery: settings.restaurant_gallery
             }
@@ -273,6 +275,35 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
 
     return (
         <div className="space-y-8 animate-fade-in max-w-4xl mx-auto">
+            {/* WhatsApp para Pedidos */}
+            <div className="bg-[#1a1a1a]/40 backdrop-blur-sm border border-white/5 rounded-2xl p-8 shadow-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <div className="p-2 bg-green-500/10 rounded-lg">
+                        <Phone className="text-green-500" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-xl text-[#F5F5F5]">Recepción de Pedidos</h3>
+                        <p className="text-xs text-[#888] uppercase tracking-wide">Configura el canal donde recibirás las compras</p>
+                    </div>
+                </div>
+
+                <div className="space-y-2 max-w-md">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#888] pl-1">
+                        Número de WhatsApp (Con código de país, sin espacios ni el signo +)
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="Ej. 50212345678"
+                        className="w-full bg-[#0D0D0D] border border-white/10 rounded-xl p-4 text-white focus:border-[#FFB800] outline-none transition-colors font-mono"
+                        value={settings.phone}
+                        onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                    />
+                    <p className="text-[10px] text-[#555] pl-1">
+                        Los clientes que elijan &quot;Pedir por WhatsApp&quot; enviarán la orden automáticamente a este número.
+                    </p>
+                </div>
+            </div>
+
             {/* Branding Section */}
             <div className="bg-[#1a1a1a]/40 backdrop-blur-sm border border-white/5 rounded-2xl p-8 shadow-xl">
                 <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-6">

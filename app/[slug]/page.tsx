@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import MenuClient from '../components/MenuClient'
 import { CartProvider } from '../components/CartProvider'
@@ -107,11 +108,12 @@ export default async function MenuPage({
     }
 
     const restaurant = restaurantData as unknown as Restaurant
-    console.log('DEBUG: restaurant_gallery', JSON.stringify(restaurant.restaurant_gallery, null, 2))
 
     return (
         <CartProvider>
-            <MenuClient restaurant={restaurant} />
+            <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-amber-500">Cargando menú...</div>}>
+                <MenuClient restaurant={restaurant} />
+            </Suspense>
         </CartProvider>
     )
 }

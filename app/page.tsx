@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import MenuClient from './components/MenuClient'
 import { CartProvider } from './components/CartProvider'
@@ -107,7 +108,9 @@ export default async function Home() {
 
     return (
         <CartProvider>
-            <MenuClient restaurant={restaurant} />
+            <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-amber-500">Cargando menú...</div>}>
+                <MenuClient restaurant={restaurant} />
+            </Suspense>
         </CartProvider>
     )
 }

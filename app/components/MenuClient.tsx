@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Search, X, ChevronRight, UtensilsCrossed, Info, Calendar, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Search, X, ChevronRight, UtensilsCrossed, Info, Calendar, Image as ImageIcon, Bell, CreditCard } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -200,7 +202,48 @@ function BannerCarousel({ banners, primaryColor, onOpenLightbox }: { banners: st
 }
 
 export default function MenuClient({ restaurant: serverRestaurant }: MenuClientProps) {
-    const { addToCart, removeOne, items, cartTotal, setTableNumber } = useCart();
+    const searchParams = useSearchParams();
+    const { addToCart, removeOne, items, cartTotal, setTableNumber, tableNumber } = useCart();
+    const [isAssistanceLoading, setIsAssistanceLoading] = useState(false);
+
+    useEffect(() => {
+        if (!searchParams) return;
+        const table = searchParams.get('table');
+        if (table && table !== tableNumber) {
+            setTableNumber(table);
+        }
+    }, [searchParams, tableNumber, setTableNumber]);
+
+    const handleRequestAssistance = async (type: 'waiter' | 'bill') => {
+        if (!tableNumber) return;
+        setIsAssistanceLoading(true);
+        try {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            const { error } = await supabase.from('orders').insert([{
+                restaurant_id: serverRestaurant.id,
+                customer_name: `Mesa ${tableNumber} (Asistencia)`,
+                table_number: tableNumber,
+                fulfillment_method: 'dine_in',
+                status: 'paid', // so it pops up in KDS
+                total_amount: 0,
+                items: [{
+                    id: type === 'waiter' ? 'ASSIST_WAITER' : 'ASSIST_BILL',
+                    name: type === 'waiter' ? '🛎️ LLAMAR AL MESERO' : '💳 PEDIR LA CUENTA',
+                    quantity: 1,
+                }]
+            }]);
+            if (error) throw error;
+            toast.success(type === 'waiter' ? 'Mesero notificado en cocina' : 'Cuenta solicitada');
+        } catch (err) {
+            console.error(err);
+            toast.error('Error de conexión');
+        } finally {
+            setIsAssistanceLoading(false);
+        }
+    }
     const [restaurant] = useState<Restaurant>(serverRestaurant);
 
     // Dynamic Template State
@@ -498,7 +541,7 @@ export default function MenuClient({ restaurant: serverRestaurant }: MenuClientP
                         key={item.id}
                         item={item}
                         variant={variant}
-                        themeConfig={themeConfig}
+                        themeConfig={themeConfig as any}
                         qty={items.filter((i: any) => i.productId === item.id || i.id === item.id).reduce((acc: number, val: any) => acc + val.quantity, 0)}
                         onAdd={() => handleAddToCart(item)}
                         onRemove={() => {
@@ -673,6 +716,28 @@ export default function MenuClient({ restaurant: serverRestaurant }: MenuClientP
                     </section>
                 )}
             </main>
+
+            {/* DINE-IN FLOATING ACTIONS */}
+            {tableNumber && (
+                <div className="fixed bottom-24 right-4 z-40 flex flex-col gap-3">
+                    <button
+                        onClick={() => handleRequestAssistance('waiter')}
+                        disabled={isAssistanceLoading}
+                        className="bg-neutral-800 text-white p-3 rounded-full shadow-xl border border-white/10 hover:bg-neutral-700 transition flex items-center gap-2 group"
+                    >
+                        <Bell size={20} className="text-amber-500 group-hover:animate-pulse" />
+                        <span className="text-xs font-bold w-0 overflow-hidden group-hover:w-auto group-hover:px-2 transition-all duration-300 whitespace-nowrap">Llamar Mesero</span>
+                    </button>
+                    <button
+                        onClick={() => handleRequestAssistance('bill')}
+                        disabled={isAssistanceLoading}
+                        className="bg-neutral-800 text-white p-3 rounded-full shadow-xl border border-white/10 hover:bg-neutral-700 transition flex items-center gap-2 group"
+                    >
+                        <CreditCard size={20} className="text-emerald-500 group-hover:animate-pulse" />
+                        <span className="text-xs font-bold w-0 overflow-hidden group-hover:w-auto group-hover:px-2 transition-all duration-300 whitespace-nowrap">Pedir Cuenta</span>
+                    </button>
+                </div>
+            )}
 
             {items.length > 0 && (
                 <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-50 pointer-events-none">

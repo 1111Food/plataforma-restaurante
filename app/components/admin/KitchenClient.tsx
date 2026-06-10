@@ -27,7 +27,7 @@ type Order = {
     fulfillment_method: 'dine_in' | 'pickup' | 'delivery'
     delivery_zone?: string
     notes?: string
-    status: 'paid' | 'pending_whatsapp' | 'cooking' | 'ready' | 'delivered'
+    status: 'paid' | 'pending_whatsapp' | 'cooking' | 'ready' | 'delivered' | 'cancelled'
     items: OrderItem[]
     total_amount: number
 }

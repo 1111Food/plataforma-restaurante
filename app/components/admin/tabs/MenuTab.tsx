@@ -692,6 +692,31 @@ export default function MenuTab({ restaurant }: MenuTabProps) {
                             onChange={e => setItemForm({ ...itemForm, description: e.target.value })}
                             placeholder="Ingredientes y detalles..."
                         />
+                        {/* DIETARY TAGS QUICK ADD */}
+                        <div className="flex gap-2 mt-2">
+                            {[
+                                { tag: '#vegan', label: 'Vegan', icon: '🌱' },
+                                { tag: '#spicy', label: 'Spicy', icon: '🌶️' },
+                                { tag: '#gf', label: 'Gluten-Free', icon: '🌾' },
+                                { tag: '#keto', label: 'Keto', icon: '🥩' }
+                            ].map(t => (
+                                <button
+                                    type="button"
+                                    key={t.tag}
+                                    onClick={() => {
+                                        const desc = itemForm.description;
+                                        if (desc.includes(t.tag)) {
+                                            setItemForm({...itemForm, description: desc.replace(t.tag, '').replace(/\s+/g, ' ').trim()});
+                                        } else {
+                                            setItemForm({...itemForm, description: desc ? `${desc} ${t.tag}` : t.tag});
+                                        }
+                                    }}
+                                    className={`px-2 py-1 text-xs rounded-md border transition-colors flex items-center gap-1 ${itemForm.description.includes(t.tag) ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700'}`}
+                                >
+                                    <span>{t.icon}</span> {t.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* PHOTO MANAGEMENT: SMART SLOTS (3 FIXED SLOTS) */}

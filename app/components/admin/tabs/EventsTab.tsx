@@ -84,7 +84,7 @@ export default function EventsTab({ restaurant }: { restaurant: any }) {
                 ...(editingEventId ? {} : { restaurant_id: restaurant.id })
             }
 
-            let resultData;
+            let resultData: Event;
 
             if (editingEventId) {
                 // UPDATE

@@ -143,7 +143,7 @@ export default function SuperAdminDashboardClient({ initialRestaurants }: Props)
         const confirm1 = confirm(`¿Estás seguro de que deseas eliminar permanentemente a "${name}" (/${slug})?`)
         if (!confirm1) return
 
-        const confirm2 = confirm(`ADVERTENCIA: Esta acción eliminará el restaurante, sus categorías, productos, eventos e historial. ¿Deseas proceder? Escribe el slug "${slug}" para confirmar:`)
+        const confirm2 = window.prompt(`ADVERTENCIA: Esta acción eliminará el restaurante, sus categorías, productos, eventos e historial. ¿Deseas proceder? Escribe el slug "${slug}" para confirmar:`)
         if (confirm2 !== slug) {
             alert('Confirmación cancelada. El slug ingresado no coincide.')
             return

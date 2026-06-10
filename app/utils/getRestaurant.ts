@@ -31,7 +31,7 @@ export async function getRestaurantBySlug(slug: string) {
 export async function getRestaurantBasicBySlug(slug: string) {
     const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, phone, slug, delivery_zones, logo_url, theme_color')
+        .select('id, name, phone, slug, delivery_zones, logo_url, theme_color, theme_config')
         .eq('slug', slug)
         .single()
 

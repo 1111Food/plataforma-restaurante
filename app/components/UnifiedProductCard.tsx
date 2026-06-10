@@ -1,6 +1,27 @@
 import { Check, Plus, Maximize2, SlidersHorizontal, Minus } from 'lucide-react';
 import QuantityControl from './QuantityControl';
 
+const parseTags = (description: string | null) => {
+    if (!description) return { text: '', tags: [] };
+    const tagsMap: Record<string, { label: string, icon: string, color: string }> = {
+        '#vegan': { label: 'Vegan', icon: '🌱', color: 'bg-green-500/20 text-green-500 border-green-500/30' },
+        '#spicy': { label: 'Spicy', icon: '🌶️', color: 'bg-red-500/20 text-red-500 border-red-500/30' },
+        '#gf': { label: 'GF', icon: '🌾', color: 'bg-amber-500/20 text-amber-500 border-amber-500/30' },
+        '#keto': { label: 'Keto', icon: '🥩', color: 'bg-purple-500/20 text-purple-500 border-purple-500/30' }
+    };
+
+    let text = description;
+    const foundTags: any[] = [];
+    Object.keys(tagsMap).forEach(tag => {
+        if (text.includes(tag)) {
+            foundTags.push(tagsMap[tag]);
+            text = text.replace(tag, '').replace(/\s+/g, ' ').trim();
+        }
+    });
+
+    return { text, tags: foundTags };
+}
+
 type MenuItem = {
     id: string;
     name: string;
@@ -40,6 +61,21 @@ export default function UnifiedProductCard({
     const { primaryColor, cardColor, imageSize = 'medium' } = themeConfig;
     const hasModifiers = item.item_modifiers && item.item_modifiers.length > 0;
 
+    const { text: cleanDescription, tags } = parseTags(item.description);
+
+    const renderTags = () => {
+        if (tags.length === 0) return null;
+        return (
+            <div className="flex gap-1 mt-1 flex-wrap">
+                {tags.map((t, idx) => (
+                    <span key={idx} className={`text-[8px] md:text-[9px] px-1.5 py-0.5 rounded border ${t.color} flex items-center gap-0.5 font-bold tracking-wider uppercase`}>
+                        {t.icon} {t.label}
+                    </span>
+                ))}
+            </div>
+        )
+    }
+
     // Helper to determine Image Aspect Ratio based on Config + Variant
     const getImageClass = () => {
         if (variant === 'overlap') return 'aspect-square object-contain -ml-[15%] w-[120%]';
@@ -78,10 +114,13 @@ export default function UnifiedProductCard({
                             <div className="w-12 md:w-16 h-1 md:h-1.5 bg-[var(--primary-color)] mt-1.5 md:mt-2 mb-1 md:mb-2"></div>
                         </div>
                     </div>
-                    {item.description && (
-                        <p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-tight line-clamp-2 md:line-clamp-3 pl-6 md:pl-7 leading-tight">
-                            {item.description}
-                        </p>
+                    {cleanDescription && (
+                        <div className="pl-6 md:pl-7">
+                            <p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-tight line-clamp-2 md:line-clamp-3 leading-tight">
+                                {cleanDescription}
+                            </p>
+                            {renderTags()}
+                        </div>
                     )}
                     <div className="pl-6 md:pl-7 mt-2 md:mt-3">
                         {qty > 0 ? (
@@ -153,7 +192,8 @@ export default function UnifiedProductCard({
 
                 <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 z-20 flex flex-col justify-end pointer-events-none">
                     <h3 className="text-white font-bold text-lg md:text-xl leading-tight drop-shadow-md mb-1 break-words">{item.name}</h3>
-                    {item.description && <p className="text-white/80 text-[10px] md:text-xs line-clamp-2 md:block drop-shadow-sm leading-relaxed">{item.description}</p>}
+                    {cleanDescription && <p className="text-white/80 text-[10px] md:text-xs line-clamp-2 md:block drop-shadow-sm leading-relaxed">{cleanDescription}</p>}
+                    {renderTags()}
 
                     <div className="mt-3 md:mt-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                         {qty > 0 ? (
@@ -198,7 +238,8 @@ export default function UnifiedProductCard({
                         <h3 className="text-white font-serif text-xl md:text-2xl leading-none">{item.name}</h3>
                         <span className="font-serif text-lg text-[#D4AF37]">Q{Number(item.price).toFixed(2)}</span>
                     </div>
-                    {item.description && <p className="text-gray-400 text-xs font-sans leading-relaxed line-clamp-3">{item.description}</p>}
+                    {cleanDescription && <p className="text-gray-400 text-xs font-sans leading-relaxed line-clamp-3">{cleanDescription}</p>}
+                    {renderTags()}
 
                     <div className="pt-2">
                         {qty > 0 ? (
@@ -300,7 +341,8 @@ export default function UnifiedProductCard({
                             <h3 className="font-bold text-sm text-white line-clamp-2 leading-tight">{item.name}</h3>
                             <span className="font-bold text-sm text-[var(--primary-color)] whitespace-nowrap" style={{ color: primaryColor }}>Q{item.price}</span>
                         </div>
-                        {item.description && <p className="text-xs text-gray-400 line-clamp-2 mt-1 leading-relaxed">{item.description}</p>}
+                        {cleanDescription && <p className="text-xs text-gray-400 line-clamp-2 mt-1 leading-relaxed">{cleanDescription}</p>}
+                        {renderTags()}
                     </div>
 
                     <div className="mt-auto pt-2 flex justify-end">
@@ -359,7 +401,8 @@ export default function UnifiedProductCard({
                     <h3 className="font-bold text-base md:text-lg line-clamp-1 text-white">
                         {item.name}
                     </h3>
-                    <p className="text-gray-400 text-xs line-clamp-2 mt-1 min-h-[2.5em]">{item.description}</p>
+                    <p className="text-gray-400 text-xs line-clamp-2 mt-1 min-h-[1.5em]">{cleanDescription}</p>
+                    {renderTags()}
                 </div>
                 <span className="text-white font-bold whitespace-nowrap bg-white/10 px-2 py-1 rounded text-xs">Q{item.price}</span>
             </div>

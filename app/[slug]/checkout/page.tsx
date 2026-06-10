@@ -1,5 +1,5 @@
 import CheckoutClient from '../../components/CheckoutClient'
-import { getRestaurantBasicBySlug } from '../../utils/getRestaurant'
+import { getRestaurantBySlug } from '../../utils/getRestaurant'
 
 type Restaurant = {
     id: string
@@ -7,6 +7,8 @@ type Restaurant = {
     phone: string | null
     slug: string
     delivery_zones: string[]
+    categories?: any[]
+    theme_config?: any
 }
 
 export default async function CheckoutPage({
@@ -17,7 +19,7 @@ export default async function CheckoutPage({
     const { slug } = await params
 
     // Fetch using utility
-    const restaurantData = await getRestaurantBasicBySlug(slug)
+    const restaurantData = await getRestaurantBySlug(slug)
 
     if (!restaurantData) {
         return (

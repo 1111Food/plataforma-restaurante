@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CartProvider, useCart } from './CartProvider'
 import Link from 'next/link'
-import { Utensils, ShoppingBag, Bike, MapPin, Clock, User, MessageCircle } from 'lucide-react'
+import { Utensils, ShoppingBag, Bike, MapPin, Clock, User, MessageCircle, X, Tag, Plus } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import { formatCurrency } from '../utils/formatCurrency'
 
@@ -19,12 +19,14 @@ type Restaurant = {
     phone: string | null
     slug: string
     delivery_zones?: string[]
+    theme_config?: any
+    categories?: any[]
 }
 
 type FulfillmentMethod = 'dine_in' | 'pickup' | 'delivery'
 
 function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
-    const { items, cartTotal, removeFromCart, tableNumber: savedTableNumber } = useCart()
+    const { items, cartTotal, removeFromCart, addToCart, tableNumber: savedTableNumber } = useCart()
 
     // Form State
     // If savedTableNumber exists, default to 'dine_in', otherwise default to 'dine_in' (or could start flexible)
@@ -56,6 +58,55 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
 
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    // Promo Code States
+    const [promoInput, setPromoInput] = useState('')
+    const [appliedPromo, setAppliedPromo] = useState<any>(null)
+    const [promoError, setPromoError] = useState('')
+
+    // Config Extraction
+    const deliveryZonesConfig = restaurant.theme_config?.deliveryZones || (restaurant.delivery_zones || []).map((z: string) => ({ name: z, cost: 0 }))
+    const minOrderAmount = restaurant.theme_config?.minOrderAmount || 0
+    const promoCodesConfig = restaurant.theme_config?.promoCodes || []
+
+    const applyPromo = () => {
+        setPromoError('')
+        const code = promoInput.trim().toUpperCase()
+        if (!code) return
+        
+        const validPromo = promoCodesConfig.find((p: any) => p.code === code)
+        if (validPromo) {
+            setAppliedPromo(validPromo)
+            setPromoInput('')
+        } else {
+            setPromoError('Cupón inválido o expirado')
+            setAppliedPromo(null)
+        }
+    }
+
+    const removePromo = () => {
+        setAppliedPromo(null)
+        setPromoInput('')
+        setPromoError('')
+    }
+
+    // Calculations
+    const selectedZoneConfig = deliveryZonesConfig.find((z: any) => z.name === deliveryZone)
+    const deliveryCost = selectedZoneConfig && fulfillmentMethod === 'delivery' ? selectedZoneConfig.cost : 0
+    
+    // Subtotal and Promo Discount
+    const discountAmount = appliedPromo ? cartTotal * (appliedPromo.discount_percentage / 100) : 0
+    const subtotalAfterDiscount = cartTotal - discountAmount
+    const finalTotal = subtotalAfterDiscount + deliveryCost
+
+    const isMinOrderMet = subtotalAfterDiscount >= minOrderAmount
+
+    const allItems = restaurant.categories?.flatMap((c: any) => c.menu_items || []) || []
+    const upsellItems = allItems.filter((i: any) => 
+        i.description?.includes('#upsell') && 
+        i.is_available && 
+        !items.some(cartItem => cartItem.productId === i.id)
+    ).slice(0, 2)
+
     if (items.length === 0) {
         return (
             <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
@@ -77,6 +128,8 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
             if (!deliveryAddress.trim()) return 'Ingresa tu dirección exacta'
             if (!whatsapp.trim()) return 'Necesitamos tu WhatsApp para la entrega'
         }
+
+        if (!isMinOrderMet) return `El pedido mínimo es de ${formatCurrency(minOrderAmount)}. Tu subtotal es de ${formatCurrency(cartTotal)}.`
 
         return null
     }
@@ -118,7 +171,7 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                 delivery_address: fulfillmentMethod === 'delivery' ? deliveryAddress : null,
                 pickup_time: fulfillmentMethod === 'pickup' ? pickupTime : null,
                 customer_whatsapp: whatsapp || null,
-                total_amount: cartTotal,
+                total_amount: finalTotal,
                 items: items, // Save items as JSON
                 status: 'pending_whatsapp'
             }
@@ -146,13 +199,17 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
             let methodDetails = ''
             if (fulfillmentMethod === 'dine_in') methodDetails = `🍽️ *Mesa:* ${tableNumber}`
             if (fulfillmentMethod === 'pickup') methodDetails = `🛍️ *Para Llevar*\n⏰ *Hora:* ${pickupTime || 'Lo antes posible'}`
-            if (fulfillmentMethod === 'delivery') methodDetails = `🛵 *A Domicilio*\n📍 *Zona:* ${deliveryZone}\n🏠 *Dirección:* ${deliveryAddress}\n📱 *WA:* ${whatsapp}`
+            if (fulfillmentMethod === 'delivery') {
+                methodDetails = `🛵 *A Domicilio*\n📍 *Zona:* ${deliveryZone} (Costo Envío: ${formatCurrency(deliveryCost)})\n🏠 *Dirección:* ${deliveryAddress}\n📱 *WA:* ${whatsapp}`
+            }
 
             const message = `*NUEVO PEDIDO - ${restaurant.name}*\n\n` +
                 `*Cliente:* ${customerName}\n` +
                 `${methodDetails}\n\n` +
-                `*Detalle del Pedido:*\n${itemsList}\n\n` +
-                `*TOTAL: ${formatCurrency(cartTotal)}*`
+                `*Detalle del Pedido:*\n${itemsList}\n` +
+                (appliedPromo ? `*Cupón:* ${appliedPromo.code} (-${formatCurrency(discountAmount)})\n` : '') +
+                (fulfillmentMethod === 'delivery' ? `*Envío:* ${formatCurrency(deliveryCost)}\n\n` : '\n') +
+                `*TOTAL: ${formatCurrency(finalTotal)}*`
 
             const phoneNumber = restaurant.phone || ''
             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
@@ -241,10 +298,10 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                     </button>
                     <button
                         onClick={() => setFulfillmentMethod('delivery')}
-                        disabled={!restaurant.delivery_zones?.length}
+                        disabled={!deliveryZonesConfig.length}
                         className={`flex flex-col items-center gap-2 py-3 rounded-lg transition-all ${fulfillmentMethod === 'delivery'
                             ? 'bg-amber-500 text-black font-bold'
-                            : !restaurant.delivery_zones?.length
+                            : !deliveryZonesConfig.length
                                 ? 'opacity-30 cursor-not-allowed'
                                 : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
                     >
@@ -254,7 +311,7 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                 </div>
 
                 {/* No Zones Warning */}
-                {!restaurant.delivery_zones?.length && (
+                {!deliveryZonesConfig.length && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg text-yellow-200 text-xs text-center">
                         <span className="block font-bold mb-1">Sin cobertura a domicilio</span>
                         El restaurante no ha configurado zonas de entrega aún. Puedes elegir Pick-up o Comer Aquí.
@@ -334,8 +391,10 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                                     className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-white focus:border-amber-500 outline-none appearance-none"
                                 >
                                     <option value="">Selecciona una zona...</option>
-                                    {restaurant.delivery_zones?.map((zone) => (
-                                        <option key={zone} value={zone}>{zone}</option>
+                                    {deliveryZonesConfig.map((zone: any) => (
+                                        <option key={zone.name} value={zone.name}>
+                                            {zone.name} {zone.cost > 0 ? `(+${formatCurrency(zone.cost)})` : '(Gratis)'}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -367,6 +426,44 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                     )}
                 </section>
 
+                {/* Upsell Section */}
+                {upsellItems.length > 0 && (
+                    <section className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/20 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <h3 className="text-sm font-bold text-amber-500 mb-3 flex items-center gap-2 relative z-10">
+                            <Plus size={16} /> ¿Agregas algo más a tu pedido?
+                        </h3>
+                        <div className="flex flex-col gap-3 relative z-10">
+                            {upsellItems.map((item: any) => (
+                                <div key={item.id} className="flex justify-between items-center bg-black/40 p-3 rounded-lg border border-amber-500/10">
+                                    <div className="flex gap-3 items-center">
+                                        {item.image_url && (
+                                            <img src={item.image_url} alt={item.name} className="w-12 h-12 object-cover rounded-md shadow-md" />
+                                        )}
+                                        <div>
+                                            <p className="font-bold text-sm text-white">{item.name}</p>
+                                            <p className="text-amber-500 font-bold text-sm">{formatCurrency(item.price)}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            addToCart({
+                                                productId: item.id,
+                                                name: item.name,
+                                                price: item.price,
+                                                modifiers: []
+                                            })
+                                        }}
+                                        className="bg-amber-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-amber-400 active:scale-95 transition-all shadow-md"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {/* Order Summary */}
                 <section>
                     <h2 className="text-xl font-bold text-amber-500 mb-4 border-b border-white/10 pb-2">Tu Pedido</h2>
@@ -390,10 +487,71 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                         ))}
                     </div>
 
-                    <div className="mt-6 flex justify-between items-center border-t border-dashed border-neutral-700 pt-4">
-                        <span className="text-xl font-bold">Total</span>
-                        <span className="text-2xl font-bold text-amber-500">{formatCurrency(cartTotal)}</span>
+                    {/* PROMO CODE SECTION */}
+                    <div className="mt-6 border-t border-white/5 pt-6 px-2">
+                        {!appliedPromo ? (
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Tag className="absolute left-3 top-3 text-neutral-500" size={16} />
+                                    <input
+                                        type="text"
+                                        value={promoInput}
+                                        onChange={(e) => setPromoInput(e.target.value)}
+                                        placeholder="Cupón de descuento"
+                                        className="w-full bg-black border border-neutral-700 rounded-lg p-3 pl-10 text-white focus:border-amber-500 outline-none uppercase font-mono text-sm"
+                                    />
+                                </div>
+                                <button
+                                    onClick={applyPromo}
+                                    disabled={!promoInput.trim()}
+                                    className="bg-neutral-800 text-white px-4 rounded-lg hover:bg-neutral-700 transition disabled:opacity-50"
+                                >
+                                    Aplicar
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex justify-between items-center bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
+                                <div>
+                                    <span className="text-xs text-amber-500 font-bold uppercase block">Cupón Aplicado</span>
+                                    <span className="text-sm font-mono text-white">{appliedPromo.code} (-{appliedPromo.discount_percentage}%)</span>
+                                </div>
+                                <button onClick={removePromo} className="text-red-500 hover:text-red-400 text-xs flex items-center gap-1">
+                                    <X size={14} /> Quitar
+                                </button>
+                            </div>
+                        )}
+                        {promoError && <p className="text-red-500 text-xs mt-2">{promoError}</p>}
                     </div>
+
+                    <div className="mt-6 space-y-2 border-t border-dashed border-neutral-700 pt-4 px-2">
+                        <div className="flex justify-between items-center text-sm text-neutral-400">
+                            <span>Subtotal Pedido</span>
+                            <span>{formatCurrency(cartTotal)}</span>
+                        </div>
+                        {appliedPromo && (
+                            <div className="flex justify-between items-center text-sm text-amber-500">
+                                <span>Descuento ({appliedPromo.code})</span>
+                                <span>-{formatCurrency(discountAmount)}</span>
+                            </div>
+                        )}
+                        {fulfillmentMethod === 'delivery' && deliveryCost > 0 && (
+                            <div className="flex justify-between items-center text-sm text-neutral-400">
+                                <span>Envío ({deliveryZone || 'Pendiente'})</span>
+                                <span>{formatCurrency(deliveryCost)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2">
+                            <span className="text-xl font-bold">Total Final</span>
+                            <span className="text-2xl font-bold text-amber-500">{formatCurrency(finalTotal)}</span>
+                        </div>
+                    </div>
+
+                    {!isMinOrderMet && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center mt-4">
+                            <strong>Pedido mínimo no alcanzado:</strong><br />
+                            Debes agregar al menos {formatCurrency(minOrderAmount - cartTotal)} más a tu carrito.
+                        </div>
+                    )}
                 </section>
 
                 <div className="space-y-4 pt-4 border-t border-white/10">
@@ -401,8 +559,8 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
                     {fulfillmentMethod !== 'delivery' && (
                         <button
                             onClick={handleWhatsAppOrder}
-                            disabled={isSubmitting}
-                            className={`w-full font-bold py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${isSubmitting
+                            disabled={isSubmitting || !isMinOrderMet}
+                            className={`w-full font-bold py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${(isSubmitting || !isMinOrderMet)
                                 ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
                                 : 'bg-green-600 text-white hover:bg-green-500 shadow-green-900/20 active:scale-[0.98]'
                                 }`}
@@ -420,8 +578,8 @@ function CheckoutForm({ restaurant }: { restaurant: Restaurant }) {
 
                     <button
                         onClick={handleStripePayment}
-                        disabled={isSubmitting}
-                        className={`w-full font-bold py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${isSubmitting
+                        disabled={isSubmitting || !isMinOrderMet}
+                        className={`w-full font-bold py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${(isSubmitting || !isMinOrderMet)
                             ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
                             : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20 active:scale-[0.98]'
                             }`}

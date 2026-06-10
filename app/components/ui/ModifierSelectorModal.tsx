@@ -55,6 +55,10 @@ export default function ModifierSelectorModal({ isOpen, onClose, item, onAddToOr
                 if (isSelected) {
                     return { ...prev, [groupId]: current.filter(id => id !== optionId) }
                 } else {
+                    if (current.length >= maxInfo) {
+                        // Max selection limit reached, don't add more
+                        return prev
+                    }
                     return { ...prev, [groupId]: [...current, optionId] }
                 }
             }
@@ -101,7 +105,7 @@ export default function ModifierSelectorModal({ isOpen, onClose, item, onAddToOr
                             <div>
                                 <h4 className="font-bold text-white text-lg">{group.name}</h4>
                                 <p className="text-[10px] text-neutral-500 uppercase tracking-widest">
-                                    {group.max_selection === 1 ? 'Elige 1' : 'Elige varios'}
+                                    {group.max_selection === 1 ? 'Elige 1' : `Elige hasta ${group.max_selection}`}
                                     {group.min_selection > 0 && <span className="text-amber-500 ml-1">• Obligatorio</span>}
                                 </p>
                             </div>
@@ -115,15 +119,22 @@ export default function ModifierSelectorModal({ isOpen, onClose, item, onAddToOr
 
                         <div className="space-y-2">
                             {group.options?.map(option => {
-                                const isSelected = (selections[group.id] || []).includes(option.id)
+                                const currentSelections = selections[group.id] || []
+                                const isSelected = currentSelections.includes(option.id)
+                                const isMaxReached = group.max_selection > 1 && currentSelections.length >= group.max_selection
+                                const isDisabled = isMaxReached && !isSelected
+
                                 return (
                                     <label
                                         key={option.id}
-                                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-amber-500/10 border-amber-500/50' : 'bg-neutral-900 border-white/5 hover:border-white/20'}`}
+                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-amber-500/10 border-amber-500/50' : 'bg-neutral-900 border-white/5 hover:border-white/20'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        onClick={(e) => {
+                                            if (isDisabled) e.preventDefault()
+                                        }}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-neutral-600'}`}>
-                                                {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-neutral-600'} ${group.max_selection > 1 ? 'rounded-md' : 'rounded-full'}`}>
+                                                {isSelected && <div className={`w-2 h-2 bg-black ${group.max_selection > 1 ? 'rounded-sm' : 'rounded-full'}`} />}
                                             </div>
                                             <span className={`text-sm ${isSelected ? 'text-white font-bold' : 'text-neutral-300'}`}>{option.name}</span>
                                         </div>
@@ -135,6 +146,7 @@ export default function ModifierSelectorModal({ isOpen, onClose, item, onAddToOr
                                             type="checkbox" // Always check for UI, logic handled manually
                                             className="hidden"
                                             checked={isSelected}
+                                            disabled={isDisabled}
                                             onChange={() => handleToggleOption(group.id, option.id, group.max_selection)}
                                         />
                                     </label>
@@ -147,7 +159,7 @@ export default function ModifierSelectorModal({ isOpen, onClose, item, onAddToOr
             </div>
 
             {/* Footer Actions */}
-            <div className="sticky bottom-0 bg-[#1a1a1a] p-4 -mx-6 -mb-6 border-t border-white/10 mt-6">
+            <div className="sticky bottom-0 bg-[#1a1a1a] p-4 -mx-6 -mb-6 border-t border-white/10 mt-6 z-10">
                 <button
                     disabled={!isValid}
                     onClick={() => {

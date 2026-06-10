@@ -43,6 +43,11 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
         template_style: restaurant.theme_config?.templateId || restaurant.template_style || 'classic-grid',
         delivery_zones: restaurant.delivery_zones || [],
         phone: restaurant.phone || '',
+        
+        // New Logistics settings stored in theme_config to avoid schema changes
+        delivery_zones_config: restaurant.theme_config?.deliveryZones || (restaurant.delivery_zones || []).map((z: string) => ({ name: z, cost: 0 })),
+        min_order_amount: restaurant.theme_config?.minOrderAmount || 0,
+        promo_codes_config: restaurant.theme_config?.promoCodes || [],
 
         // Dynamic Theme Config
         theme_config: restaurant.theme_config || {
@@ -194,14 +199,20 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
                 promoBannerUrl: bannerUrl1,
                 promoBannerUrl2: bannerUrl2,
                 promoBannerUrl3: bannerUrl3,
+                promoCodes: settings.promo_codes_config,
                 cardColor: settings.card_color,
                 imageSize: settings.theme_config?.imageSize || 'medium',
-                fontFamily: settings.theme_config?.fontFamily || 'inter'
+                fontFamily: settings.theme_config?.fontFamily || 'inter',
+                deliveryZones: settings.delivery_zones_config,
+                minOrderAmount: settings.min_order_amount
             };
+
+            // Keep text delivery_zones in sync for backwards compatibility
+            const zonesTextList = settings.delivery_zones_config.map((z: any) => z.name).filter((n: string) => n.trim().length > 0);
 
             const updateData = {
                 logo_url: logoUrl,
-                delivery_zones: settings.delivery_zones,
+                delivery_zones: zonesTextList,
                 phone: settings.phone || null,
                 theme_config: newThemeConfig,
                 restaurant_gallery: settings.restaurant_gallery,
@@ -1007,35 +1018,164 @@ export default function ConfigTab({ restaurant }: { restaurant: any }) {
                         </div>
                     </div>
 
-                    <div className="bg-[#000]/20 p-6 rounded-xl border border-white/5">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[#888] mb-2">
-                            Zonas de Cobertura (Separadas por comas)
-                        </label>
-                        <textarea
-                            defaultValue={settings.delivery_zones?.join(', ') || ''}
-                            onChange={(e) => {
-                                // Allow free typing, parse on change but store raw as well if we had local state.
-                                // Since we are using 'settings' as source of truth for saving, we can arguably just split by comma
-                                // BUT to allow typing "Zona 1, Zona 2", we need to NOT re-render the value from the array immediately if it kills the comma.
-                                // Actually, simpler solution: Don't map/filter inside onChange for the VALUE, only for the STATE to be saved.
-                                // But if 'settings' drives the value...
-                                // Let's try parsing loosely.
-                                const val = e.target.value;
-                                const zones = val.split(','); // Don't trim/filter here to preserve structure? 
-                                // NO, we must use a local variable or just 'defaultValue' and let React handle the uncontrolled-ish input?
-                                // Let's switch to fully uncontrolled with 'defaultValue' and update state on Blur or Change?
-                                // If I use 'defaultValue', I can update state on Change.
-                                // Updating state doesn't re-render the textarea if value is not bound?
-                                // Yes!
-                                const cleanZones = val.split(',').map(z => z.trim()).filter(z => z.length > 0);
-                                setSettings({ ...settings, delivery_zones: cleanZones });
-                            }}
-                            className="w-full bg-[#0D0D0D] border border-white/10 rounded-lg p-4 text-[#F5F5F5] focus:outline-none focus:border-green-500 transition-colors h-24 text-sm"
-                            placeholder="Ej: Zona 10, Zona 14, Carretera a El Salvador, Zona 4..."
-                        />
-                        <p className="text-[10px] text-[#666] mt-2">
-                            Estas opciones aparecerán en el checkout cuando el cliente elija "A Domicilio".
-                        </p>
+                    <div className="bg-[#000]/20 p-6 rounded-xl border border-white/5 space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-[#888] mb-2">
+                                Monto Mínimo de Pedido
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                value={settings.min_order_amount}
+                                onChange={(e) => setSettings({ ...settings, min_order_amount: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-[#0D0D0D] border border-white/10 rounded-lg p-3 text-[#F5F5F5] focus:outline-none focus:border-[#FFB800] transition-colors"
+                                placeholder="Ej: 50.00"
+                            />
+                            <p className="text-[10px] text-[#666] mt-1">Los clientes no podrán hacer un pedido si el total no supera este monto.</p>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-2 mt-4">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-[#888]">
+                                    Zonas de Cobertura y Costos de Envío
+                                </label>
+                                <button 
+                                    onClick={() => {
+                                        setSettings({ 
+                                            ...settings, 
+                                            delivery_zones_config: [...settings.delivery_zones_config, { name: '', cost: 0 }] 
+                                        })
+                                    }}
+                                    className="text-xs text-[#FFB800] hover:underline flex items-center gap-1"
+                                >
+                                    <Plus size={12} /> Agregar Zona
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                {settings.delivery_zones_config.map((zone: any, idx: number) => (
+                                    <div key={idx} className="flex gap-2 items-center bg-[#0D0D0D] p-2 rounded-lg border border-white/10">
+                                        <input
+                                            value={zone.name}
+                                            onChange={(e) => {
+                                                const newZones = [...settings.delivery_zones_config];
+                                                newZones[idx].name = e.target.value;
+                                                setSettings({ ...settings, delivery_zones_config: newZones });
+                                            }}
+                                            placeholder="Nombre zona (ej. Zona 1)"
+                                            className="flex-1 bg-transparent text-sm text-white focus:outline-none p-1"
+                                        />
+                                        <div className="w-px h-6 bg-white/10"></div>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-neutral-500 text-sm">Q</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={zone.cost}
+                                                onChange={(e) => {
+                                                    const newZones = [...settings.delivery_zones_config];
+                                                    newZones[idx].cost = parseFloat(e.target.value) || 0;
+                                                    setSettings({ ...settings, delivery_zones_config: newZones });
+                                                }}
+                                                className="w-16 bg-transparent text-sm text-right text-white focus:outline-none p-1"
+                                            />
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const newZones = settings.delivery_zones_config.filter((_: any, i: number) => i !== idx);
+                                                setSettings({ ...settings, delivery_zones_config: newZones });
+                                            }}
+                                            className="text-red-500 hover:bg-red-500/20 p-1.5 rounded transition-colors ml-2"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {settings.delivery_zones_config.length === 0 && (
+                                    <p className="text-xs text-neutral-600 text-center py-4 italic border border-dashed border-white/5 rounded-lg">No hay zonas configuradas</p>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-[#666] mt-2">
+                                Estas opciones aparecerán en el checkout cuando el cliente elija "A Domicilio". El costo se sumará automáticamente.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Promo Codes Section */}
+                <div className="mt-10 pt-10 border-t border-white/5">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-amber-500/10 rounded-lg">
+                            <span className="text-amber-500 font-bold text-xl">%</span>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-[#F5F5F5]">Cupones de Descuento</h3>
+                            <p className="text-xs text-[#888] uppercase tracking-wide">Códigos promocionales para Checkout</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#000]/20 p-6 rounded-xl border border-white/5 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-[#888]">
+                                Códigos Activos
+                            </label>
+                            <button 
+                                onClick={() => {
+                                    setSettings({ 
+                                        ...settings, 
+                                        promo_codes_config: [...settings.promo_codes_config, { code: '', discount_percentage: 0 }] 
+                                    })
+                                }}
+                                className="text-xs text-[#FFB800] hover:underline flex items-center gap-1"
+                            >
+                                <Plus size={12} /> Agregar Cupón
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {settings.promo_codes_config.map((promo: any, idx: number) => (
+                                <div key={idx} className="flex gap-2 items-center bg-[#0D0D0D] p-2 rounded-lg border border-white/10">
+                                    <input
+                                        value={promo.code}
+                                        onChange={(e) => {
+                                            const newPromos = [...settings.promo_codes_config];
+                                            newPromos[idx].code = e.target.value.toUpperCase().replace(/\s/g, '');
+                                            setSettings({ ...settings, promo_codes_config: newPromos });
+                                        }}
+                                        placeholder="CÓDIGO (ej. VERANO20)"
+                                        className="flex-1 bg-transparent text-sm text-white focus:outline-none p-1 font-mono"
+                                    />
+                                    <div className="w-px h-6 bg-white/10"></div>
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={promo.discount_percentage}
+                                            onChange={(e) => {
+                                                const newPromos = [...settings.promo_codes_config];
+                                                newPromos[idx].discount_percentage = parseFloat(e.target.value) || 0;
+                                                setSettings({ ...settings, promo_codes_config: newPromos });
+                                            }}
+                                            className="w-16 bg-transparent text-sm text-right text-white focus:outline-none p-1"
+                                        />
+                                        <span className="text-neutral-500 text-sm">% desc</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const newPromos = settings.promo_codes_config.filter((_: any, i: number) => i !== idx);
+                                            setSettings({ ...settings, promo_codes_config: newPromos });
+                                        }}
+                                        className="text-red-500 hover:bg-red-500/20 p-1.5 rounded transition-colors ml-2"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            {settings.promo_codes_config.length === 0 && (
+                                <p className="text-xs text-neutral-600 text-center py-4 italic border border-dashed border-white/5 rounded-lg">No hay cupones activos</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 

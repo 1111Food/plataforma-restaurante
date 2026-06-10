@@ -65,7 +65,7 @@ export default function ModifierManager({ isOpen, onClose, restaurantId, groups,
             return
         }
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('modifier_groups')
             .insert([{
                 restaurant_id: restaurantId,
@@ -73,6 +73,8 @@ export default function ModifierManager({ isOpen, onClose, restaurantId, groups,
                 min_selection: 0, // Default Optional
                 max_selection: 1  // Default Single Select
             }])
+            .select()
+            .single()
 
         if (error) {
             console.error('Error creando grupo FULL:', error)
@@ -80,6 +82,7 @@ export default function ModifierManager({ isOpen, onClose, restaurantId, groups,
         } else {
             setNewGroupName('')
             setIsCreating(false)
+            setSelectedGroup({ ...data, options: [] })
             onUpdate()
         }
     }
@@ -201,6 +204,18 @@ export default function ModifierManager({ isOpen, onClose, restaurantId, groups,
                                                 <CheckSquare size={10} /> Múltiple
                                             </button>
                                         </div>
+                                        {selectedGroup.max_selection > 1 && (
+                                            <div className="mt-2 animate-fade-in">
+                                                <label className="text-[10px] text-neutral-500 block mb-1">Máximo de opciones que puede elegir</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="2"
+                                                    value={selectedGroup.max_selection}
+                                                    onChange={(e) => updateGroupSettings(selectedGroup.id, { max_selection: parseInt(e.target.value) || 2 })}
+                                                    className="w-full bg-black border border-white/10 rounded p-1.5 text-xs text-white focus:border-amber-500 outline-none"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Requirement */}

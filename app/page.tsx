@@ -15,21 +15,28 @@ type MenuItem = {
     name: string
     description: string | null
     price: number
+    category: string
+    image_url: string | null
+    is_available: boolean
+    [key: string]: any
 }
 
 type Category = {
     id: string
     name: string
     menu_items: MenuItem[]
+    [key: string]: any
 }
 
 type Restaurant = {
     id: string
     slug: string
     name: string
-    logo_url?: string
-    template_style?: 'classic-grid' | 'luxury-showcase' | 'minimal-list' | 'urban-grid' // New
+    logo_url?: string | null
+    template_style?: any
+    restaurant_gallery?: any
     categories: Category[]
+    [key: string]: any
 }
 
 export default async function Home() {
